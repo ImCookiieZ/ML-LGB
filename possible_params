@@ -1,0 +1,18 @@
+params = {
+    'objective': 'regression',
+    'metric': ['l1','l2'],
+    'boosting_type': 'gbdt',
+    'num_leaves': 128,
+    'learning_rate': 0.005,
+    'feature_fraction': 0.9
+}
+
+params2 = {'num_leaves': 62.38875,
+ 'learning_rate': 0.05881057041628935,
+ 'feature_fraction': 0.6649194689920432}
+
+
+// 7.76403
+params3 = {'num_leaves': 60.411096247576594,
+ 'learning_rate': 0.07844816406249999,
+ 'feature_fraction': 0.7417382812499999}
