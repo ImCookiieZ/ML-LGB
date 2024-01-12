@@ -12,12 +12,11 @@
 
 # # Imports
 
-# In[1]:
+# In[92]:
 
 
 import numpy as np
 import pandas as pd
-get_ipython().run_line_magic('matplotlib', 'inline')
 import seaborn as sns
 import lightgbm as lgb
 from sklearn.model_selection import train_test_split
@@ -26,21 +25,43 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.impute import SimpleImputer as Imputer
 from sklearn.model_selection import cross_val_score
 import os
+import sys
 import optunity.metrics
 import joblib
 import json
-dir_content= os.listdir("../data/results")
+
+
+# Get the root directory dependent on executed by real python script or jupyter notebook
+
+# In[93]:
+
+
+script_directory = os.path.dirname(os.path.dirname(os.path.realpath(sys.argv[0])))
+print(script_directory)
+if os.path.basename(script_directory).startswith("Python"):
+    script_directory = "../"
+    get_ipython().run_line_magic('matplotlib', 'inline')
+else:
+    script_directory = os.path.dirname(os.path.dirname(os.path.realpath(sys.argv[0])))
+
+
+# Specify the version number of the model
+
+# In[94]:
+
+
+dir_content= os.listdir(script_directory + "/data/results")
 version = len(dir_content) # starts from 1 since a ".gitignore" is in the directory
 version
 
 
 # # Data Analysis
 
-# In[2]:
+# In[95]:
 
 
-df_train   = pd.read_csv("../data/learning/ml-learning-data.csv",   sep=';', na_values=['', '-'], parse_dates=['LastNewsletter', 'date'], dayfirst=True)
-df_predict = pd.read_csv("../data/predicting/ml-prediction-data.csv", sep=';', na_values=['', '-'], parse_dates=['LastNewsletter', 'date'], dayfirst=True)
+df_train   = pd.read_csv(script_directory + "/data/learning/ml-learning-data.csv",   sep=';', na_values=['', '-'], parse_dates=['LastNewsletter', 'date'], dayfirst=True)
+df_predict = pd.read_csv(script_directory + "/data/predicting/ml-prediction-data.csv", sep=';', na_values=['', '-'], parse_dates=['LastNewsletter', 'date'], dayfirst=True)
 df_train['DaysSinceLastNewsletter'] = df_train['DaysSinceLastNewsletter'].str.replace(',', '.').astype(float)
 df_predict['DaysSinceLastNewsletter'] = df_predict['DaysSinceLastNewsletter'].str.replace(',', '.').astype(float)
 
@@ -48,7 +69,7 @@ df_train['id'] = [i for i in range(len(df_train.index))]
 df_predict['id'] = [i for i in range(len(df_predict.index))]
 
 
-# In[3]:
+# In[96]:
 
 
 df_train.sample(3)
@@ -56,13 +77,13 @@ df_train.sample(3)
 
 # DaysUntilNextPurchase is nothing we know at the time we want to predict so we drop it.<br/>Also Last Newsletter is directly connected to DaysSinceLastNewsletter and date. Therefore it has to be dropped as well.
 
-# In[4]:
+# In[97]:
 
 
 df_train.drop(['DaysUntilNextPurchase', 'LastNewsletter'], axis=1, inplace=True)
 
 
-# In[5]:
+# In[98]:
 
 
 "Training dataset: {}".format(df_train.shape)
@@ -70,7 +91,7 @@ df_train.drop(['DaysUntilNextPurchase', 'LastNewsletter'], axis=1, inplace=True)
 
 # 13.292 Lines and 10 Columns
 
-# In[6]:
+# In[99]:
 
 
 df_predict.sample(3)
@@ -78,13 +99,13 @@ df_predict.sample(3)
 
 # UnitRelativeDays is our prediction column and DaysUntilNextPurchase is nothing we know at the time we want to predict so we drop it.<br/>Also Last Newsletter is directly connected to DaysSinceLastNewsletter and date. Therefore it has to be dropped as well.
 
-# In[7]:
+# In[100]:
 
 
 df_predict.drop(['UnitRelativeDays', 'DaysUntilNextPurchase', 'LastNewsletter'], axis=1, inplace=True)
 
 
-# In[8]:
+# In[101]:
 
 
 "Prediction dataset: {}".format(df_predict.shape)
@@ -92,7 +113,7 @@ df_predict.drop(['UnitRelativeDays', 'DaysUntilNextPurchase', 'LastNewsletter'],
 
 # Dataset has 8749 Lines and 10 Columns
 
-# In[9]:
+# In[102]:
 
 
 df_train.describe()
@@ -102,7 +123,7 @@ df_train.describe()
 
 # LastProductOrder is always 1 and not included in the training dataset so we can drop it
 
-# In[10]:
+# In[103]:
 
 
 df_predict.drop(['LastProductOrder'], axis=1, inplace=True)
@@ -110,14 +131,14 @@ df_predict.drop(['LastProductOrder'], axis=1, inplace=True)
 
 # Date is in date format but ML needs floats or bools so we convert it into a timestamp
 
-# In[11]:
+# In[104]:
 
 
 df_train['date'] = pd.to_datetime(df_train['date']).astype('int64') // 10**9
 df_predict['date'] = pd.to_datetime(df_predict['date']).astype('int64') // 10**9
 
 
-# In[12]:
+# In[105]:
 
 
 print('''After edditing,
@@ -126,7 +147,7 @@ Prediction dataset has {} lines and {} columns
 '''.format(df_train.shape[0], df_train.shape[1], df_predict.shape[0], df_predict.shape[1]))
 
 
-# In[13]:
+# In[106]:
 
 
 sns.histplot(df_train['UnitRelativeDays'], kde=True)
@@ -141,7 +162,7 @@ sns.histplot(df_train['UnitRelativeDays'], kde=True)
 # ### def fill_missing:
 # Fills the NULL values of the given columns (cols) with the given value (val)
 
-# In[14]:
+# In[107]:
 
 
 def fill_missing(df, cols, val):
@@ -152,7 +173,7 @@ def fill_missing(df, cols, val):
 # ### def fill_missing_with_mode:
 # Fills the NULL values of the given columns (cols) with the most used value in the column
 
-# In[15]:
+# In[108]:
 
 
 def fill_missing_with_mode(df, cols):
@@ -164,7 +185,7 @@ def fill_missing_with_mode(df, cols):
 # ### def addlogs
 # Calculate a logagithm function on the given dataframe (res). The logarithm function is on the base of 10 and adds a Constant (1.01) to make sure the input is not <=0, The result is stored in a new column: *NAME*_log
 
-# In[16]:
+# In[109]:
 
 
 def addlogs(res, cols):
@@ -185,7 +206,7 @@ def addlogs(res, cols):
 
 # Calculate the log for all simple integer features
 
-# In[17]:
+# In[110]:
 
 
 loglist = ['Units', 'Preis'] # + ['UnitRelativeDays']
@@ -195,7 +216,7 @@ df_train = addlogs(df_train, loglist)
 
 # Calculate the natural log for real valued numbers
 
-# In[18]:
+# In[111]:
 
 
 #df_train['Units'] = np.log1p(df_train['Units'])
@@ -204,7 +225,7 @@ df_train = addlogs(df_train, loglist)
 
 # ## Fill missing values 
 
-# In[19]:
+# In[112]:
 
 
 fill_missing(df_train, ['Customerid', 'date', 'Orderid', 'Produktkey_Orders'], "Null")
@@ -218,7 +239,7 @@ fill_missing_with_mode(df_train, ['Preis', 'UnitRelativeDays', 'DaysSinceLastNew
 # Check that every type is correct for handling the data.<br/>
 # If there would be any categorical columns that consist of numeric values we should transform the type in the dataframe to string. We do not have this in our usecase. <br/>Example:
 
-# In[20]:
+# In[113]:
 
 
 #df_train['WineQuality'] = df_train['WineQuality'].apply(str)
@@ -230,7 +251,7 @@ fill_missing_with_mode(df_train, ['Preis', 'UnitRelativeDays', 'DaysSinceLastNew
 
 # ### Identify Outliers
 
-# In[21]:
+# In[114]:
 
 
 def find_outliers_IQR(df):
@@ -241,7 +262,7 @@ def find_outliers_IQR(df):
    return outliers
 
 
-# In[22]:
+# In[115]:
 
 
 outliers = find_outliers_IQR(df_train[['UnitRelativeDays', 'DaysSinceLastNewsletter', 'Units', 'Preis']])
@@ -254,7 +275,7 @@ print('min outlier value: '+ str(outliers.min()))
 outliers
 
 
-# In[23]:
+# In[116]:
 
 
 def set_min_max(df, col, range):
@@ -277,7 +298,7 @@ df_train.describe()
 
 # ## Handle Categoricals
 
-# In[24]:
+# In[117]:
 
 
 def fix_missing_cols(in_train, in_test):
@@ -309,14 +330,14 @@ def dummy_encode(in_df_train, in_df_test):
     return df_train, df_predict
 
 
-# In[25]:
+# In[118]:
 
 
 #set(df_train.columns) - set(df_predict.columns)
 df_train, df_predict = dummy_encode(df_train, df_predict)
 
 
-# In[26]:
+# In[119]:
 
 
 print("Shape train: %s, test: %s" % (df_train.shape, df_predict.shape))
@@ -324,13 +345,13 @@ print("Shape train: %s, test: %s" % (df_train.shape, df_predict.shape))
 
 # ## Feature Engeneering
 
-# In[27]:
+# In[120]:
 
 
 #df_train.corr(numeric_only=True)
 
 
-# In[28]:
+# In[121]:
 
 
 def load_poly_features(df_train, df_predict, cols):
@@ -373,7 +394,7 @@ def load_poly_features(df_train, df_predict, cols):
     return df_poly_features, df_poly_features_test
 
 
-# In[29]:
+# In[122]:
 
 
 correlated_cols = ['Units', 'Preis']
@@ -381,14 +402,14 @@ df_train_poly, df_predict_poly =  load_poly_features(df_train, df_predict, cols=
 print("Shape train: %s, predict: %s" % (df_train_poly.shape, df_predict_poly.shape))
 
 
-# In[30]:
+# In[123]:
 
 
 df_train = df_train.merge(right=df_train_poly.reset_index(), how='left', on='id')
 df_predict = df_predict.merge(right=df_predict_poly.reset_index(), how='left', on='id')
 
 
-# In[31]:
+# In[124]:
 
 
 print("Shape train: %s, predict: %s" % (df_train.shape, df_predict.shape))
@@ -396,26 +417,26 @@ print("Shape train: %s, predict: %s" % (df_train.shape, df_predict.shape))
 
 # # Light GBM
 
-# In[32]:
+# In[125]:
 
 
 y = df_train["UnitRelativeDays"]
 y.sample(3)
 
 
-# In[33]:
+# In[126]:
 
 
 print("Shape train: %s, test: %s" % (df_train.shape, df_predict.shape))
 
 
-# In[34]:
+# In[127]:
 
 
 df_train.sample(2)
 
 
-# In[35]:
+# In[128]:
 
 
 df_train.drop(["UnitRelativeDays"], axis=1, inplace=True)
@@ -423,7 +444,7 @@ df_train.drop(["UnitRelativeDays"], axis=1, inplace=True)
 df_predict.drop(["UnitRelativeDays"], axis=1, inplace=True) 
 
 
-# In[36]:
+# In[129]:
 
 
 X_train, X_test, y_train, y_test = train_test_split( df_train, y, test_size=0.2, random_state=42)
@@ -431,10 +452,9 @@ X_train, X_test, y_train, y_test = train_test_split( df_train, y, test_size=0.2,
 
 # Define the objective function to be minimized (in this case, the RMSE) by using optunity to optimize the hyperparameters
 
-# In[37]:
+# In[130]:
 
 
-# Define the objective function to be minimized (in this case, the RMSE)
 #@optunity.cross_validated(x=X_train, y=y_train, num_folds=5, num_iter=2) runs into errors so I use it in the function itself
 def objective_function(num_leaves, learning_rate, feature_fraction):
     params = {
@@ -461,7 +481,7 @@ def objective_function(num_leaves, learning_rate, feature_fraction):
 
 # Define the search range for hyperparameters
 
-# In[38]:
+# In[131]:
 
 
 search_space = {'num_leaves': [32, 256],
@@ -471,7 +491,7 @@ search_space = {'num_leaves': [32, 256],
 
 # Run the optimization using [Opunity](https://optunity.readthedocs.io/en/latest/)
 
-# In[39]:
+# In[ ]:
 
 
 optimal_params, _, _ = optunity.minimize(objective_function, num_evals=50, **search_space)
@@ -482,14 +502,12 @@ optimal_params = {
     'feature_fraction': 0.7417382812499999
 }
 '''
-with open("../data/parameters/training-parameters_model-V{}.json".format(version), "w") as json_file:
-    json.dump(optimal_params, json_file, indent=2)
 optimal_params
 
 
 # Train the Model based on the hyperparameters we just found
 
-# In[40]:
+# In[ ]:
 
 
 optimal_params['num_leaves'] = int(optimal_params['num_leaves'])
@@ -502,29 +520,31 @@ final_bst = lgb.train({'objective': 'regression',
 
 # Make the prediction on the set where we know the answer
 
-# In[41]:
+# In[ ]:
 
 
 y_pred = final_bst.predict(X_train, num_iteration=final_bst.best_iteration)
 
 
-# In[42]:
+# In[ ]:
 
 
 mse = mean_squared_error(y_train, y_pred)
 rmse = round((mse) ** 0.5, 5)
 print('The RMSE of prediction is:', rmse)
+with open(script_directory + "/data/parameters/training_model-V{}.json".format(version), "w") as json_file:
+    json.dump({'parameters': optimal_params, 'rmse': rmse}, json_file, indent=2)
 
 
 # Make the actual Prediction on data where we don't know the solution (in this case we know for testing purposes)
 
-# In[43]:
+# In[ ]:
 
 
 prediction = final_bst.predict(df_predict, num_iteration=final_bst.best_iteration)
 
 
-# In[44]:
+# In[ ]:
 
 
 prediction
@@ -532,25 +552,24 @@ prediction
 
 # Store the result in a file
 
-# In[45]:
+# In[ ]:
 
 
 df_predict["UnitRelativeDays"] = prediction
 
 
-# In[46]:
+# In[ ]:
 
 
-df_predict.to_csv("../data/results/results-V{}.csv".format(version), columns=["id", "UnitRelativeDays"], index=False, sep=';')
+df_predict.to_csv(script_directory + "/data/results/results-V{}.csv".format(version), columns=["id", "UnitRelativeDays"], index=False, sep=';')
 
 
 # Store the trained model in a file
 
-# In[47]:
+# In[ ]:
 
 
-# Save the model to a file
-joblib.dump(final_bst, '../trained_models/ML-V{}-DDA.pkl'.format(version))
+joblib.dump(final_bst, script_directory + '/trained_models/ML-V{}-DDA.pkl'.format(version))
 
 
 # In[ ]:
