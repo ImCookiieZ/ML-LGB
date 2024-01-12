@@ -37,15 +37,15 @@ os.listdir("data")
 # In[2]:
 
 
-df_train   = pd.read_csv("./data/ml-learning-data-2.csv",   sep=';', na_values=['', '-'], parse_dates=['LastNewsletter', 'date'], dayfirst=True)
-df_predict = pd.read_csv("./data/ml-prediction-data-2.csv", sep=';', na_values=['', '-'], parse_dates=['LastNewsletter', 'date'], dayfirst=True)
+df_train   = pd.read_csv("./data/ml-learning-data.csv",   sep=';', na_values=['', '-'], parse_dates=['LastNewsletter', 'date'], dayfirst=True)
+df_predict = pd.read_csv("./data/ml-prediction-data.csv", sep=';', na_values=['', '-'], parse_dates=['LastNewsletter', 'date'], dayfirst=True)
 df_train['DaysSinceLastNewsletter'] = df_train['DaysSinceLastNewsletter'].str.replace(',', '.').astype(float)
 df_predict['DaysSinceLastNewsletter'] = df_predict['DaysSinceLastNewsletter'].str.replace(',', '.').astype(float)
 
 df_train['id'] = [i for i in range(len(df_train.index))]
 df_predict['id'] = [i for i in range(len(df_predict.index))]
 
-df_predict.to_csv("expected_results.csv", sep=';')
+df_predict.to_csv("./data/expected_results.csv", sep=';')
 
 
 # In[3]:
@@ -532,7 +532,7 @@ df_predict["UnitRelativeDays"] = prediction
 # In[58]:
 
 
-df_predict.to_csv("results3.csv", columns=["id", "UnitRelativeDays"], index=False, sep=';')
+df_predict.to_csv("./data/results.csv", columns=["id", "UnitRelativeDays"], index=False, sep=';')
 
 
 # Store the trained model in a file
