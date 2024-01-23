@@ -49,6 +49,7 @@ df_train.describe()
 df_train.dropna(inplace=True)
 df_train['date'] = df_train['date'].apply(lambda x: x.timestamp())
 df_train['LastNewsletter'] = df_train['LastNewsletter'].apply(lambda x: x.timestamp())
+df_train.drop(columns='LastNewsletter', inplace=True)
 
 
 # In[13]:
@@ -87,7 +88,7 @@ df_train
 # In[17]:
 
 
-df_train[['date_t', 'DaysUntilNextPurchase_t','LastNewsletter_t', 'Units_t', 'Preis_t', 'UnitRelativeDays_t']] = scaler.fit_transform(df_train[['date', 'DaysUntilNextPurchase','LastNewsletter', 'Units', 'Preis', 'UnitRelativeDays']])
+#df_train[['date_t', 'DaysUntilNextPurchase_t','LastNewsletter_t', 'Units_t', 'Preis_t', 'UnitRelativeDays_t']] = scaler.fit_transform(df_train[['date', 'DaysUntilNextPurchase','LastNewsletter', 'Units', 'Preis', 'UnitRelativeDays']])
 
 
 # In[18]:
@@ -121,7 +122,7 @@ def optimise_k_means(data, max_k):
 # In[20]:
 
 
-optimise_k_means(df_train, 10)
+#optimise_k_means(df_train, 10)
 
 
 # In[21]:
@@ -134,14 +135,14 @@ data = df_train.values
 
 
 # Apply t-SNE for dimensionality reduction
-tsne = TSNE(n_components=3, random_state=42)
-data_tsne = tsne.fit_transform(data)
+# tsne = TSNE(n_components=3, random_state=42)
+# data_tsne = tsne.fit_transform(data)
 
 
 # In[23]:
 
 
-num_clusters = 3  # You can adjust the number of clusters based on the diagram above
+num_clusters = 4  # You can adjust the number of clusters based on the diagram above
 kmeans = KMeans(n_clusters=num_clusters, random_state=42, n_init='auto')
 kmeans.fit(data)
 
